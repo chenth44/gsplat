@@ -71,6 +71,28 @@ __global__ void rasterize_backward_kernel(
     float* __restrict__ v_opacity
 );
 
+__global__ void rasterize_backward_billboards_kernel(
+    const dim3 tile_bounds,
+    const dim3 img_size,
+    const unsigned grid_size,
+    const float spatial_scale,
+    const int32_t* __restrict__ gaussian_ids_sorted,
+    const int2* __restrict__ tile_bins,
+    const float2* __restrict__ xys,
+    const float4* __restrict__ transforms,
+    const float* __restrict__ rgb_grids,
+    const float* __restrict__ opacities,
+    const float3& __restrict__ background,
+    const float* __restrict__ final_Ts,
+    const int* __restrict__ final_index,
+    const float3* __restrict__ v_output,
+    const float* __restrict__ v_output_alpha,
+    float2* __restrict__ v_xy,
+    float4* __restrict__ v_transform,
+    float* __restrict__ v_rgb_grid,
+    float* __restrict__ v_opacity
+);
+
 __global__ void rasterize_backward_sum_kernel(
     const dim3 tile_bounds,
     const dim3 img_size,

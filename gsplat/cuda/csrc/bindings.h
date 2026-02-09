@@ -121,6 +121,24 @@ std::tuple<
     const torch::Tensor &background
 );
 
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>
+rasterize_forward_billboards_tensor(
+    const std::tuple<int, int, int> tile_bounds,
+    const std::tuple<int, int, int> block,
+    const std::tuple<int, int, int> img_size,
+    const unsigned grid_size,
+    const float spatial_scale,
+    const torch::Tensor &gaussian_ids_sorted,
+    const torch::Tensor &tile_bins,
+    const torch::Tensor &xys,
+    const torch::Tensor &transforms,
+    const torch::Tensor &color_grids,
+    const torch::Tensor &opacities,
+    const torch::Tensor &background
+);
+
+
+
 std::tuple<
     torch::Tensor,
     torch::Tensor,
@@ -203,6 +221,33 @@ std::
         const torch::Tensor &final_idx,
         const torch::Tensor &v_output, // dL_dout_color
         const torch::Tensor &v_output_alpha
+    );
+
+std::
+    tuple<
+        torch::Tensor, // dL_dxy
+        torch::Tensor, // dL_dtransform
+        torch::Tensor, // dL_dcolor_grid
+        torch::Tensor  // dL_dopacity
+        >
+    rasterize_backward_billboards_tensor(
+        const unsigned img_height,
+        const unsigned img_width,
+        const unsigned BLOCK_H,
+        const unsigned BLOCK_W,
+        const unsigned grid_size,
+        const float spatial_scale,
+        const torch::Tensor &gaussians_ids_sorted,
+        const torch::Tensor &tile_bins,
+        const torch::Tensor &xys,
+        const torch::Tensor &transforms,
+        const torch::Tensor &color_grids,
+        const torch::Tensor &opacities,
+        const torch::Tensor &background,
+        const torch::Tensor &final_Ts,
+        const torch::Tensor &final_idx,
+        const torch::Tensor &v_output, // dL_dout_color
+        const torch::Tensor &v_output_alpha // dL_dout_alpha
     );
 
 std::
@@ -300,4 +345,39 @@ project_gaussians_2d_scale_rot_backward_tensor(
     torch::Tensor &v_xy,
     torch::Tensor &v_depth,
     torch::Tensor &v_conic
+);
+
+std::tuple<
+    torch::Tensor,
+    torch::Tensor,
+    torch::Tensor,
+    torch::Tensor,
+    torch::Tensor>
+project_gaussians_2d_uv_transform_forward_tensor(
+    const int num_points,
+    torch::Tensor &means2d,
+    torch::Tensor &scales2d,
+    torch::Tensor &rotation,
+    const unsigned img_height,
+    const unsigned img_width,
+    const std::tuple<int, int, int> tile_bounds,
+    const float clip_thresh
+);
+
+std::tuple<
+    torch::Tensor,
+    torch::Tensor,
+    torch::Tensor>
+project_gaussians_2d_uv_transform_backward_tensor(
+    const int num_points,
+    torch::Tensor &means2d,
+    torch::Tensor &scales2d,
+    torch::Tensor &rotation,
+    const unsigned img_height,
+    const unsigned img_width,
+    torch::Tensor &radii,
+    torch::Tensor &transforms,
+    torch::Tensor &v_xy,
+    torch::Tensor &v_depth,
+    torch::Tensor &v_transform
 );

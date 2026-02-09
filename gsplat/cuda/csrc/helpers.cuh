@@ -307,3 +307,98 @@ inline __device__ bool clip_near_plane(
     }
     return false;
 }
+
+
+inline __device__ void rgb_grid_bilinear(
+    const float2 uv, const int N, const float *rgb_grid, const float spatial_scale, float3 &rgb
+)  {
+    // Map uv in [-spatial_scale, spatial_scale] to [0, N-1]
+    const float u_unclamped = (float)(N - 1) * (uv.x + spatial_scale) / (2.0f * spatial_scale);
+    const float v_unclamped = (float)(N - 1) * (uv.y + spatial_scale) / (2.0f * spatial_scale);
+    const float u_norm = fminf(fmaxf(u_unclamped, 0.0f), (float)(N - 1));
+    const float v_norm = fminf(fmaxf(v_unclamped, 0.0f), (float)(N - 1));
+    const int iu = (int)floorf(u_norm);
+    const int iv = (int)floorf(v_norm);
+    const float fu = u_norm - (float)iu;
+    const float fv = v_norm - (float)iv;
+
+    const float3 rgb_00 = {rgb_grid[iv * N * 3 + iu * 3], rgb_grid[iv * N * 3 + iu * 3 + 1], rgb_grid[iv * N * 3 + iu * 3 + 2]};
+    const float3 rgb_10 = {rgb_grid[iv * N * 3 + min(iu + 1, N - 1) * 3], rgb_grid[iv * N * 3 + min(iu + 1, N - 1) * 3 + 1], rgb_grid[iv * N * 3 + min(iu + 1, N - 1) * 3 + 2]};
+    const float3 rgb_01 = {rgb_grid[min(iv + 1, N - 1) * N * 3 + iu * 3], rgb_grid[min(iv + 1, N - 1) * N * 3 + iu * 3 + 1], rgb_grid[min(iv + 1, N - 1) * N * 3 + iu * 3 + 2]};
+    const float3 rgb_11 = {rgb_grid[min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3], rgb_grid[min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3 + 1], rgb_grid[min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3 + 2]};
+
+    rgb.x =
+        (1 - fu) * (1 - fv) * rgb_00.x +
+        fu * (1 - fv) * rgb_10.x +
+        (1 - fu) * fv * rgb_01.x +
+        fu * fv * rgb_11.x;
+
+    rgb.y =
+        (1 - fu) * (1 - fv) * rgb_00.y +
+        fu * (1 - fv) * rgb_10.y +
+        (1 - fu) * fv * rgb_01.y +
+        fu * fv * rgb_11.y;
+
+    rgb.z =
+        (1 - fu) * (1 - fv) * rgb_00.z +
+        fu * (1 - fv) * rgb_10.z +
+        (1 - fu) * fv * rgb_01.z +
+        fu * fv * rgb_11.z;
+}
+
+inline __device__ void rgb_grid_bilinear_vjp(
+    const float2 uv, const int N, const float *rgb_grid, const float spatial_scale, const float3 v_rgb, float2 &v_uv, float *v_rgb_grid
+)  {
+    // Map uv in [-spatial_scale, spatial_scale] to [0, N-1]
+    const float u_unclamped = (float)(N - 1) * (uv.x + spatial_scale) / (2.0f * spatial_scale);
+    const float v_unclamped = (float)(N - 1) * (uv.y + spatial_scale) / (2.0f * spatial_scale);
+    const float u_norm = fminf(fmaxf(u_unclamped, 0.0f), (float)(N - 1));
+    const float v_norm = fminf(fmaxf(v_unclamped, 0.0f), (float)(N - 1));
+    const int iu = (int)floorf(u_norm);
+    const int iv = (int)floorf(v_norm);
+    const float fu = u_norm - (float)iu;
+    const float fv = v_norm - (float)iv;
+
+    const float3 rgb00 = {rgb_grid[iv * N * 3 + iu * 3], rgb_grid[iv * N * 3 + iu * 3 + 1], rgb_grid[iv * N * 3 + iu * 3 + 2]};
+    const float3 rgb10 = {rgb_grid[iv * N * 3 + min(iu + 1, N - 1) * 3], rgb_grid[iv * N * 3 + min(iu + 1, N - 1) * 3 + 1], rgb_grid[iv * N * 3 + min(iu + 1, N - 1) * 3 + 2]};
+    const float3 rgb01 = {rgb_grid[min(iv + 1, N - 1) * N * 3 + iu * 3], rgb_grid[min(iv + 1, N - 1) * N * 3 + iu * 3 + 1], rgb_grid[min(iv + 1, N - 1) * N * 3 + iu * 3 + 2]};
+    const float3 rgb11 = {rgb_grid[min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3], rgb_grid[min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3 + 1], rgb_grid[min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3 + 2]};
+
+    float3 dc_dfu = make_float3(
+    (1 - fv) * (rgb10.x - rgb00.x) + fv * (rgb11.x - rgb01.x),
+    (1 - fv) * (rgb10.y - rgb00.y) + fv * (rgb11.y - rgb01.y),
+    (1 - fv) * (rgb10.z - rgb00.z) + fv * (rgb11.z - rgb01.z)
+    );
+
+    float3 dc_dfv = make_float3(
+    (1 - fu) * (rgb01.x - rgb00.x) + fu * (rgb11.x - rgb10.x),
+    (1 - fu) * (rgb01.y - rgb00.y) + fu * (rgb11.y - rgb10.y),
+    (1 - fu) * (rgb01.z - rgb00.z) + fu * (rgb11.z - rgb10.z)
+    );
+
+    float v_fu = v_rgb.x * dc_dfu.x + v_rgb.y * dc_dfu.y + v_rgb.z * dc_dfu.z;
+    float v_fv = v_rgb.x * dc_dfv.x + v_rgb.y * dc_dfv.y + v_rgb.z * dc_dfv.z;
+
+    const bool u_in = (u_unclamped > 0.0f && u_unclamped < (float)(N - 1));
+    const bool v_in = (v_unclamped > 0.0f && v_unclamped < (float)(N - 1));
+    const float duduv = (float)(N - 1) / (2.0f * spatial_scale);
+    const float dvdvv = (float)(N - 1) / (2.0f * spatial_scale);
+    v_uv.x = u_in ? (v_fu * duduv) : 0.0f;
+    v_uv.y = v_in ? (v_fv * dvdvv) : 0.0f;
+
+    atomicAdd(v_rgb_grid + iv * N * 3 + iu * 3, (1 - fu) * (1 - fv) * v_rgb.x);
+    atomicAdd(v_rgb_grid + iv * N * 3 + iu * 3 + 1, (1 - fu) * (1 - fv) * v_rgb.y);
+    atomicAdd(v_rgb_grid + iv * N * 3 + iu * 3 + 2, (1 - fu) * (1 - fv) * v_rgb.z);
+
+    atomicAdd(v_rgb_grid + iv * N * 3 + min(iu + 1, N - 1) * 3, fu * (1 - fv) * v_rgb.x);
+    atomicAdd(v_rgb_grid + iv * N * 3 + min(iu + 1, N - 1) * 3 + 1, fu * (1 - fv) * v_rgb.y);
+    atomicAdd(v_rgb_grid + iv * N * 3 + min(iu + 1, N - 1) * 3 + 2, fu * (1 - fv) * v_rgb.z);
+
+    atomicAdd(v_rgb_grid + min(iv + 1, N - 1) * N * 3 + iu * 3, (1 - fu) * fv * v_rgb.x);
+    atomicAdd(v_rgb_grid + min(iv + 1, N - 1) * N * 3 + iu * 3 + 1, (1 - fu) * fv * v_rgb.y);
+    atomicAdd(v_rgb_grid + min(iv + 1, N - 1) * N * 3 + iu * 3 + 2, (1 - fu) * fv * v_rgb.z);
+
+    atomicAdd(v_rgb_grid + min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3, fu * fv * v_rgb.x);
+    atomicAdd(v_rgb_grid + min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3 + 1, fu * fv * v_rgb.y);
+    atomicAdd(v_rgb_grid + min(iv + 1, N - 1) * N * 3 + min(iu + 1, N - 1) * 3 + 2, fu * fv * v_rgb.z);
+}

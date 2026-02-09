@@ -9,6 +9,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("rasterize_backward", &rasterize_backward_tensor);
     m.def("rasterize_sum_forward", &rasterize_forward_sum_tensor);
     m.def("rasterize_sum_backward", &rasterize_backward_sum_tensor);
+    m.def("rasterize_billboards_forward", &rasterize_forward_billboards_tensor);
+    m.def("rasterize_billboards_backward", &rasterize_backward_billboards_tensor);
     m.def("project_gaussians_forward", &project_gaussians_forward_tensor);
     m.def("project_gaussians_backward", &project_gaussians_backward_tensor);
     m.def("compute_sh_forward", &compute_sh_forward_tensor);
@@ -17,6 +19,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("project_gaussians_2d_backward", &project_gaussians_2d_backward_tensor);
     m.def("project_gaussians_2d_scale_rot_forward", &project_gaussians_2d_scale_rot_forward_tensor);
     m.def("project_gaussians_2d_scale_rot_backward", &project_gaussians_2d_scale_rot_backward_tensor);
+    m.def("project_gaussians_2d_uv_transform_forward", &project_gaussians_2d_uv_transform_forward_tensor);
+    m.def("project_gaussians_2d_uv_transform_backward", &project_gaussians_2d_uv_transform_backward_tensor);
     // utils
     m.def("compute_cov2d_bounds", &compute_cov2d_bounds_tensor);
     m.def("map_gaussian_to_intersects", &map_gaussian_to_intersects_tensor);

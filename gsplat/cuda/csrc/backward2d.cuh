@@ -33,3 +33,19 @@ __global__ void project_gaussians_2d_scale_rot_backward_kernel(
     float2* __restrict__ v_scale,
     float* __restrict__ v_rot
 );
+
+__global__ void project_gaussians_2d_uv_transform_backward_kernel(
+    const int num_points,
+    const float2* __restrict__ means2d,
+    const float2* __restrict__ scales2d,
+    const float* __restrict__ rotation,
+    const dim3 img_size,
+    const int* __restrict__ radii,
+    const float4* __restrict__ transforms,
+    const float2* __restrict__ v_xy,
+    const float* __restrict__ v_depth,
+    const float4* __restrict__ v_transform,
+    float2* __restrict__ v_mean2d,
+    float2* __restrict__ v_scale,
+    float* __restrict__ v_rot
+);

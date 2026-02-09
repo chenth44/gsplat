@@ -122,3 +122,55 @@ __global__ void project_gaussians_2d_scale_rot_forward_kernel(
     depths[idx] = 0.0f;
 
 }
+
+__global__ void project_gaussians_2d_uv_transform_forward_kernel(
+    const int num_points,
+    const float2* __restrict__ means2d,
+    const float2* __restrict__ scales2d,
+    const float* __restrict__ rotation,
+    const dim3 img_size,
+    const dim3 tile_bounds,
+    const float clip_thresh,
+    float2* __restrict__ xys,
+    float* __restrict__ depths,
+    int* __restrict__ radii,
+    float4* __restrict__ transforms,  // 2x2 transform matrix from (x, y) to (u, v) space, stored as (m00, m01, m10, m11)
+    int32_t* __restrict__ num_tiles_hit
+) {
+    unsigned idx = cg::this_grid().thread_rank(); // idx of thread within grid
+    if (idx >= num_points) {
+        return;
+    }
+    radii[idx] = 0;
+    num_tiles_hit[idx] = 0;
+
+    // Retrieve the 2D Gaussian parameters
+    float2 center = {0.5f * img_size.x * means2d[idx].x + 0.5f * img_size.x,
+                     0.5f * img_size.y * means2d[idx].y + 0.5f * img_size.y};
+
+    bool ok = scales2d[idx].x > 0 && scales2d[idx].y > 0;
+    if (!ok) return; // invalid scale
+
+    float s, c;
+    sincosf(rotation[idx], &s, &c);
+
+    float4 transform = make_float4(
+        c / scales2d[idx].x, s / scales2d[idx].x,
+        -s / scales2d[idx].y, c / scales2d[idx].y
+    );
+
+    float radius = ceil(3.f * max(scales2d[idx].x, scales2d[idx].y));
+
+    transforms[idx] = transform;
+    xys[idx] = center;
+    radii[idx] = (int)radius;
+    uint2 tile_min, tile_max;
+    get_tile_bbox(center, radius, tile_bounds, tile_min, tile_max);
+    int32_t tile_area = (tile_max.x - tile_min.x) * (tile_max.y - tile_min.y);
+    if (tile_area <= 0) {
+        // printf("%d point bbox outside of bounds\n", idx);
+        return;
+    }
+    num_tiles_hit[idx] = tile_area;
+    depths[idx] = 0.0f;
+}
