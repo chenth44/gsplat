@@ -137,7 +137,7 @@ __global__ void project_gaussians_2d_uv_transform_forward_kernel(
     float4* __restrict__ transforms,  // 2x2 transform matrix from (x, y) to (u, v) space, stored as (m00, m01, m10, m11)
     int32_t* __restrict__ num_tiles_hit
 ) {
-    unsigned idx = cg::this_grid().thread_rank(); // idx of thread within grid
+    unsigned idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= num_points) {
         return;
     }
@@ -160,6 +160,7 @@ __global__ void project_gaussians_2d_uv_transform_forward_kernel(
     );
 
     float radius = ceil(3.f * max(scales2d[idx].x, scales2d[idx].y));
+    radius = fmaxf(radius, 1.f); // ensure radius is at least 1 pixel
 
     transforms[idx] = transform;
     xys[idx] = center;

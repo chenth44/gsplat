@@ -383,8 +383,8 @@ inline __device__ void rgb_grid_bilinear_vjp(
     const bool v_in = (v_unclamped > 0.0f && v_unclamped < (float)(N - 1));
     const float duduv = (float)(N - 1) / (2.0f * spatial_scale);
     const float dvdvv = (float)(N - 1) / (2.0f * spatial_scale);
-    v_uv.x = u_in ? (v_fu * duduv) : 0.0f;
-    v_uv.y = v_in ? (v_fv * dvdvv) : 0.0f;
+    v_uv.x += u_in ? (v_fu * duduv) : 0.0f;
+    v_uv.y += v_in ? (v_fv * dvdvv) : 0.0f;
 
     atomicAdd(v_rgb_grid + iv * N * 3 + iu * 3, (1 - fu) * (1 - fv) * v_rgb.x);
     atomicAdd(v_rgb_grid + iv * N * 3 + iu * 3 + 1, (1 - fu) * (1 - fv) * v_rgb.y);

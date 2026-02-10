@@ -124,7 +124,7 @@ __global__ void project_gaussians_2d_uv_transform_backward_kernel(
     float2* __restrict__ v_scale,
     float* __restrict__ v_rot
 ) {
-    unsigned idx = cg::this_grid().thread_rank(); // idx of thread within grid
+    unsigned idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= num_points || radii[idx] <= 0) {
         return;
     }
@@ -132,14 +132,19 @@ __global__ void project_gaussians_2d_uv_transform_backward_kernel(
     float s, c;
     sincosf(rotation[idx], &s, &c);
 
-    v_scale[idx].x = -(v_transform[idx].x * c + v_transform[idx].y * s) / (scales2d[idx].x * scales2d[idx].x);
-    v_scale[idx].y = -(v_transform[idx].z * -s + v_transform[idx].w * c) / (scales2d[idx].y * scales2d[idx].y);
-    v_rot[idx] = -v_transform[idx].x * s / scales2d[idx].x
-        + v_transform[idx].y * c / scales2d[idx].x
-        - v_transform[idx].z * c / scales2d[idx].y
-        - v_transform[idx].w * s / scales2d[idx].y;
+    float sx = fmaxf(scales2d[idx].x, 1e-6f);
+    float sy = fmaxf(scales2d[idx].y, 1e-6f);
+    float inv_sx = 1.f / sx;
+    float inv_sy = 1.f / sy;
 
-    v_mean2d[idx].x = v_xy[idx].x * (0.5f * img_size.x);
-    v_mean2d[idx].y = v_xy[idx].y * (0.5f * img_size.y);
+    v_scale[idx].x += -(v_transform[idx].x * c + v_transform[idx].y * s) * (inv_sx * inv_sx);
+    v_scale[idx].y += -(v_transform[idx].z * -s + v_transform[idx].w * c) * (inv_sy * inv_sy);
+    v_rot[idx] += -v_transform[idx].x * s * inv_sx
+        + v_transform[idx].y * c * inv_sx
+        - v_transform[idx].z * c * inv_sy
+        - v_transform[idx].w * s * inv_sy;
+
+    v_mean2d[idx].x += v_xy[idx].x * (0.5f * img_size.x);
+    v_mean2d[idx].y += v_xy[idx].y * (0.5f * img_size.y);
 
 }

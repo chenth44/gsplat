@@ -503,6 +503,7 @@ __global__ void rasterize_backward_billboards_kernel(
                 atomicAdd(v_transform_ptr + 4*g + 0, v_transform_local.x);
                 atomicAdd(v_transform_ptr + 4*g + 1, v_transform_local.y);
                 atomicAdd(v_transform_ptr + 4*g + 2, v_transform_local.z);
+                atomicAdd(v_transform_ptr + 4*g + 3, v_transform_local.w);
 
                 float* v_xy_ptr = (float*)(v_xy);
                 atomicAdd(v_xy_ptr + 2*g + 0, v_xy_local.x);

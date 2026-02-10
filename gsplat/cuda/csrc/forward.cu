@@ -601,14 +601,6 @@ __global__ void rasterize_forward_billboards(
                 continue;
             }
 
-            const float next_T = T * (1.f - alpha);
-            if (next_T <= 1e-4f) { // this pixel is done
-                // we want to render the last gaussian that contributes and note
-                // that here idx > range.x so we don't underflow
-                done = true;
-                break;
-            }
-
             int32_t g = id_batch[t];
             const float vis = alpha * T;
 
@@ -622,8 +614,16 @@ __global__ void rasterize_forward_billboards(
             pix_out.x = pix_out.x + c.x * vis;
             pix_out.y = pix_out.y + c.y * vis;
             pix_out.z = pix_out.z + c.z * vis;
+
+            const float next_T = T * (1.f - alpha);
             T = next_T;
             cur_idx = batch_start + t;
+
+
+            if (T <= 1e-4f) { // this pixel is done AFTER rendering this gaussian
+                done = true;
+                break;
+            }
         }
     }
 
